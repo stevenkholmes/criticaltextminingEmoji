@@ -5,6 +5,11 @@
 
 # Have your Twitter Dev Account Ready. For instructions, see: https://medium.com/@GalarnykMichael/accessing-data-from-twitter-api-using-r-part1-b387a1c7d3e
 
+# See twitteR package information for command descriptions: https://www.rdocumentation.org/packages/twitteR/versions/1.1.9
+
+# the searchTwitter command will allow you to search for tweets up to 18000 per query and up to 7 days old. Let's practice. Create a variable (a name that stores some information you want to do something with later)
+
+
 install.packages(twitteR)
 
 library(twitteR)
@@ -18,13 +23,11 @@ access_token_secret <- "9vpiSGKg1fIPQtxc5d5ESiFlZQpfbknEN1f1m2xe5byw7"
 setup_twitter_oauth(api_key, api_secret_key, access_token, access_token_secret)
 [1] "Using direct authentication"
 
-# See twitteR package information for command descriptions: https://www.rdocumentation.org/packages/twitteR/versions/1.1.9
-
-# the searchTwitter command will allow you to search for tweets up to 18000 per query and up to 7 days old. Let's practice. Create a variable (a name that stores some information you want to do something with later)
-
+# if you get error messages, triple check your keys on Twitter. Even a single wrong or missing digit will cause it not to work
+ 
 tweets_blm <- searchTwitter('#blm', n=18000)
 
-# To see all the #blm tweets that you have pulled with searchTwtitter, simply type your variable name and hit Enter on your keyboard. So, after this function runs (give it a few seconds), you can type the variable name and hit enter
+# To see all the 18000 (which is the maximum per query) #blm tweets that you have pulled with searchTwtitter, simply type your variable name and hit Enter on your keyboard. So, after this function runs (give it a few seconds), you can type the variable name and hit enter
 
 tweets_blm
 
@@ -40,8 +43,6 @@ tweets_blm
 [1] "Theo9291: RT @RealJamesWoods: Susan Rosenberg is VP of the fundraising arm of #BLM. She was charged for her role in the 1983 bombing of the United St…"
 
  [ reached getOption("max.print") -- omitted 17000 entries ]
- 
- 
  
  
 
@@ -170,9 +171,9 @@ install.packages(dplyr)
 
 #and then activate them with the library function
 
-library(reader)
+library(readr)
 library(tidytext)
-library(dyplr)
+library(dplyr)
 
 ## Couple things: a) know where your home drive is in R with the getwd() command
 
@@ -250,14 +251,6 @@ emojis_matching(usermedia$text, matchto, description) %>%
   summarise(n = sum(count)) %>%
   arrange(-n)
 
-blm_analysis <- iconv(tweets_blm$text, from = "latin1", to = "ascii", sub = "byte")
-rank <- emojis_matching(usermedia$text, matchto, description) %>% 
-+ group_by(description) %>% 
-+ summarise(n = sum(count)) %>%
-+ arrange(-n) `summarise()` ungrouping output (override with `.groups` argument)
-
-head(rank, 10)
-
 ##here's the output for July 13 with 18000 tweets
  raised fist               127
  2 sparkles                   51
@@ -276,7 +269,24 @@ head(rank, 10)
 ALMtweets <- searchTwitter("#alllivesmatter", n = 18000)
 [1] "Rate limited .... blocking for a minute and retrying up to 119 times ..."
 
+
 #The above rate limited line can happen. Go make a cup of tea. Sometimes it can take up to 10 - 15 min (or more) to pull 18000 tweets
 
+[1] "Rate limited .... blocking for a minute and retrying up to 106 times ..."
 
+#fifteen minutes later ^^^^
 
+usermedia2 <- ALMtweets %>%
++ twListToDF()
+
+#export to working directory
+
+write.csv(usermedia2, file="alllivesmatterJuly13.csv")
+usermedia2$text <- iconv(usermedia2$text, from = "latin1", to = "ascii", sub = "byte")
+
+emojis_matching(usermedia2$text, matchto, description) %>% 
+  group_by(description) %>% 
+  summarise(n = sum(count)) %>%
+  arrange(-n)
+  
+  #note: these are just exercises. If is
