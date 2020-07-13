@@ -1,0 +1,282 @@
+# Download and install R or Rstudio: https://rstudio.com/products/rstudio/download/
+# For Intro to R, see https://www.datacamp.com/courses/free-introduction-to-r?utm_source=adwords_ppc&utm_campaignid=1565610363&utm_adgroupid=67750485748&utm_device=c&utm_keyword=introduction%20to%20r&utm_matchtype=e&utm_network=g&utm_adpostion=&utm_creative=295213546478&utm_targetid=kwd-299434552293&utm_loc_interest_ms=&utm_loc_physical_ms=9028549&gclid=CjwKCAjwjLD4BRAiEiwAg5NBFmxLcu2XKfgQJ9JM4YNS1-ZyEAlCzwAL8bLQ_EBpfpFiXGgDB2P7qRoCl8EQAvD_BwE
+# Below is code we ran for #BMLJuly11 and #alllivesmatterJuly11 in conjunction with our chapter in the Re-Programmable Rhetorics collection
+# You're welcome to swap our our files and/or add new datasets
+
+# Have your Twitter Dev Account Ready. For instructions, see: https://medium.com/@GalarnykMichael/accessing-data-from-twitter-api-using-r-part1-b387a1c7d3e
+
+install.packages(twitteR)
+
+library(twitteR)
+
+## store api keys (these are fake example values; replace with your own keys)
+api_key <- "afYS4vbIlPAj096E60c4W1fiK"
+api_secret_key <- "bI91kqnqFoNCrZFbsjAWHD4gJ91LQAhdCJXCj3yscfuULtNkuu"
+access_token <- "9551451262-wK2EmA942kxZYIwa5LMKZoQA4Xc2uyIiEwu2YXL"
+access_token_secret <- "9vpiSGKg1fIPQtxc5d5ESiFlZQpfbknEN1f1m2xe5byw7"
+
+setup_twitter_oauth(api_key, api_secret_key, access_token, access_token_secret)
+[1] "Using direct authentication"
+
+# See twitteR package information for command descriptions: https://www.rdocumentation.org/packages/twitteR/versions/1.1.9
+
+# the searchTwitter command will allow you to search for tweets up to 18000 per query and up to 7 days old. Let's practice. Create a variable (a name that stores some information you want to do something with later)
+
+tweets_blm <- searchTwitter('#blm', n=18000)
+
+# To see all the #blm tweets that you have pulled with searchTwtitter, simply type your variable name and hit Enter on your keyboard. So, after this function runs (give it a few seconds), you can type the variable name and hit enter
+
+tweets_blm
+
+# You'll see
+
+[[998]]
+[1] "RedCloudSon: RT @RealJamesWoods: Susan Rosenberg is VP of the fundraising arm of #BLM. She was charged for her role in the 1983 bombing of the United St…"
+
+[[999]]
+[1] "laurenmayhughes: RT @Ddwyer14: Pardon my reach \u270a\U0001f3fd\n#MondayMotivaton \n#BLM #EndRacism \n#ThinkElite ☁️ https://t.co/qndl4GkTdR"
+
+[[1000]]
+[1] "Theo9291: RT @RealJamesWoods: Susan Rosenberg is VP of the fundraising arm of #BLM. She was charged for her role in the 1983 bombing of the United St…"
+
+ [ reached getOption("max.print") -- omitted 17000 entries ]
+ 
+ 
+ 
+ 
+
+######### For Emoji analytics, input lines 1-110 from Jessica's code https://github.com/today-is-a-good-day/emojis/blob/master/emoji_analysis.R
+##I'm copying them with full credit to Jessica ^^^ for your convenience
+
+# load packages and set options
+options(stringsAsFactors = FALSE)
+library(tidyverse)
+library(rtweet)
+library(rvest)
+library(Unicode)
+library(tm)
+
+Sys.setlocale(category = "LC_ALL", locale = "en_US.UTF-8")
+
+## ---- utility functions ----
+# this function outputs the emojis found in a string as well as their occurences
+count_matches <- function(string, matchto, description, sentiment = NA) {
+  
+  vec <- str_count(string, matchto)
+  matches <- which(vec != 0)
+  
+  descr <- NA
+  cnt <- NA
+  
+  if (length(matches) != 0) {
+    
+    descr <- description[matches]
+    cnt <- vec[matches]
+    
+  } 
+  
+  df <- data.frame(text = string, description = descr, count = cnt, sentiment = NA)
+  
+  if (!is.na(sentiment) && length(sentiment[matches]) != 0) {
+    
+    df$sentiment <- sentiment[matches]
+    
+  }
+  
+  return(df)
+  
+}
+
+# this function applies count_matches on a vector of texts and outputs a data.frame
+emojis_matching <- function(texts, matchto, description, sentiment = NA) {
+  
+  texts %>% 
+    map_df(count_matches, 
+           matchto = matchto, 
+           description = description, 
+           sentiment = sentiment)
+  
+}
+
+# function that separates capital letters hashtags
+hashgrep <- function(text) {
+  hg <- function(text) {
+    result <- ""
+    while(text != result) {
+      result <- text
+      text <- gsub("#[[:alpha:]]+\\K([[:upper:]]+)", " \\1", text, perl = TRUE)
+    }
+    return(text)
+  }
+  unname(sapply(text, hg))
+}
+
+# tweets cleaning pipe
+cleanPosts <- function(text) {
+  clean_texts <- text %>%
+    gsub("<.*>", "", .) %>% # remove emojis
+    gsub("&amp;", "", .) %>% # remove &
+    gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", .) %>% # remove retweet entities
+    gsub("@\\w+", "", .) %>% # remove at people
+    hashgrep %>%
+    gsub("[[:punct:]]", "", .) %>% # remove punctuation
+    gsub("[[:digit:]]", "", .) %>% # remove digits
+    gsub("http\\w+", "", .) %>% # remove html links
+    iconv(from = "latin1", to = "ASCII", sub="") %>% # remove emoji and bizarre signs
+    gsub("[ \t]{2,}", " ", .) %>% # remove unnecessary spaces
+    gsub("^\\s+|\\s+$", "", .) %>% # remove unnecessary spaces
+    tolower
+  return(clean_texts)
+}
+
+# function that outputs a df of emojis with their top 5 words (by frequency)
+wordFreqEmojis <- function(df, text = df$text, description = df$description, top = 5) {
+  
+  map_df(unique(description), function(x) {
+    
+    dat <- df %>% 
+      filter(description == x)
+    
+    myCorpus <- Corpus(VectorSource(dat$text)) %>%
+      tm_map(removePunctuation) %>%
+      tm_map(stripWhitespace) %>%
+      tm_map(removeWords, stopwords("english"))
+    
+    dtm <- DocumentTermMatrix(myCorpus)
+    # find the sum of words in each Document
+    rowTotals <- apply(dtm , 1, sum)
+    dtm.new   <- dtm[rowTotals> 0, ]
+    # collapse matrix by summing over columns
+    freq <- colSums(as.matrix(dtm))
+    # create sort order (descending)
+    ord <- order(freq, decreasing = TRUE)
+    
+    list(emoji = rep(x, top), 
+         words = names(freq[ord][1:top]), 
+         frequency = freq[ord][1:top]) 
+    
+  })
+  
+}
+
+
+# Here are a few tweaks you will need to get the rest of Jessica's code working
+
+# You'll need to add a few extra packages
+
+install.packages(readr)
+install.packages(tidytext)
+install.packages(dplyr)
+
+#and then activate them with the library function
+
+library(reader)
+library(tidytext)
+library(dyplr)
+
+## Couple things: a) know where your home drive is in R with the getwd() command
+
+## Example: getwd()
+[1] "/Users/holmes" ##
+
+# When you go to Jessica's emojiword bank on Github at https://raw.githubusercontent.com/today-is-a-good-day/emojis/master/emojis.csv, youll need a few steps
+# If you see a Green button called Raw, alt click on it and use the "save link as" function
+# If you see a bunch of text, right click and use the "save page as" function to save a file called emojis.csv
+# See our chapter for a full explanation of how emoji works in R or see Jessica's explanation here: https://redirect.viglink.com/?format=go&jsonp=vglnk_159466714830120&key=949efb41171ac6ec1bf7f206d57e90b8&libId=kcf9tz6f01021u9s000DAgj19kk1n&loc=https%3A%2F%2Fwww.r-bloggers.com%2Femojis-analysis-in-r%2F&v=1&out=http%3A%2F%2Fopiateforthemass.es%2Farticles%2Femoticons-in-R%2F&ref=https%3A%2F%2Fwww.r-bloggers.com%2Fauthor%2Fjessica-peterka-bonetta%2F&title=Emojis%20Analysis%20in%20R%20%7C%20R-bloggers&txt=an%20emoji%20decoder
+#after you download the emojis.csv file, you'll need to move it to wherever R says your working directory is located. You can also change your working directory with the setwd() command
+
+## Back to Jessica's script
+
+# read in emoji dictionary
+# I used to get the dictionary from Felipe: https://github.com/felipesua
+# but he put it down, so I uploaded the csv file to my github profile: 
+# https://raw.githubusercontent.com/today-is-a-good-day/emojis/master/emojis.csv
+# input your custom path to file
+
+emDict_raw <- read.csv2("emojis.csv") %>% 
+  select(description = EN, r_encoding = ftu8, unicode)
+  
+  # plain skin tones
+skin_tones <- c("light skin tone", 
+                "medium-light skin tone", 
+                "medium skin tone",
+                "medium-dark skin tone", 
+                "dark skin tone")
+
+# remove plain skin tones and remove skin tone info in description
+emDict <- emDict_raw %>%
+  # remove plain skin tones emojis
+  filter(!description %in% skin_tones) %>%
+  # remove emojis with skin tones info, e.g. remove woman: light skin tone and only
+  # keep woman
+  filter(!grepl(":", description)) %>%
+  mutate(description = tolower(description)) %>%
+  mutate(unicode = as.u_char(unicode))
+# all emojis with more than one unicode codepoint become NA 
+
+matchto <- emDict$r_encoding
+description <- emDict$description
+
+# You can follow her steps to grab your own Twitterdata. She also has an updated tutorial here: https://www.r-bloggers.com/emojis-analysis-in-r/
+ u
+# here's a handy function to start building your own database. Scrape and export your findings to a csv file using my example above by creating what is called a dataframe (orgnized spreadsheet columns with headers for the program to analyze)
+
+#first, change the variable with your tweets to a dataframe
+
+blm_analysis <- tweets_blm %>%
++ twListToDF
+
+#then write it to csv file
+write.csv(blm_analysis, file = "BLMemojiJuly13.csv")
+
+# you will now be able to locate a csv file in your working directory
+# to re-import your downloaded csv (or any new csv file from your working directory) use:
+
+tweets_data2 <- read.csv(file = "whateveryounamedyourfile.csv"
+
+
+#if you want to import one of our files from this Git pository, download it, move it to your working directory, and then upload it you can use this previous command. Save it as whatever variable name you want.
+
+#let's analyze emoji frequency. First, you need to convert your variable with the scraped tweets OR your imported CSV file to a dataframe and store it in a new variable.
+#if you haven't already, make sure you convert your scraped tweets variable to a new variable as a dataframe
+
+usermedia <- tweets_blm %>%
++ twListToDF()
+
+usermedia$text <- iconv(usermedia$text, from = "latin1", to = "ascii", sub = "byte")
+
+emojis_matching(usermedia$text, matchto, description) %>% 
+  group_by(description) %>% 
+  summarise(n = sum(count)) %>%
+  arrange(-n)
+
+blm_analysis <- iconv(tweets_blm$text, from = "latin1", to = "ascii", sub = "byte")
+rank <- emojis_matching(usermedia$text, matchto, description) %>% 
++ group_by(description) %>% 
++ summarise(n = sum(count)) %>%
++ arrange(-n) `summarise()` ungrouping output (override with `.groups` argument)
+
+head(rank, 10)
+
+##here's the output for July 13 with 18000 tweets
+ raised fist               127
+ 2 sparkles                   51
+ 3 male sign                  49
+ 4 red heart                  23
+ 5 female sign                22
+ 6 double exclamation mark    20
+ 7 cloud                      14
+ 8 warning                    11
+ 9 black large square          6
+10 white small square          6
+# … with 19 more rows
+  
+# Here's for #alllivesmatter July 13
+
+ALMtweets <- searchTwitter("#alllivesmatter", n = 18000)
+[1] "Rate limited .... blocking for a minute and retrying up to 119 times ..."
+
+#The above rate limited line can happen. Go make a cup of tea. Sometimes it can take up to 10 - 15 min (or more) to pull 18000 tweets
+
+
+
