@@ -13,11 +13,12 @@
 
 # For Intro to R, see https://www.datacamp.com/courses/free-introduction-to-r?utm_source=adwords_ppc&utm_campaignid=1565610363&utm_adgroupid=67750485748&utm_device=c&utm_keyword=introduction%20to%20r&utm_matchtype=e&utm_network=g&utm_adpostion=&utm_creative=295213546478&utm_targetid=kwd-299434552293&utm_loc_interest_ms=&utm_loc_physical_ms=9028549&gclid=CjwKCAjwjLD4BRAiEiwAg5NBFmxLcu2XKfgQJ9JM4YNS1-ZyEAlCzwAL8bLQ_EBpfpFiXGgDB2P7qRoCl8EQAvD_BwE
 
-# [the "#" symbol designates a notational comment that the compiler will ignore. 
+# The "#" symbol designates a notational comment that the compiler will ignore. 
 
 # Intro to data cleaning in R https://cran.r-project.org/doc/contrib/de_Jonge+van_der_Loo-Introduction_to_data_cleaning_with_R.pdf
 
 # Below is code we ran for #BMLJuly11 and #alllivesmatterJuly11 in conjunction with our chapter in the Re-Programmable Rhetorics collection
+
 # You're welcome to swap our our files and/or add new datasets
 
 # Have your Twitter Dev Account Ready. For instructions, see: https://medium.com/@GalarnykMichael/accessing-data-from-twitter-api-using-r-part1-b387a1c7d3e
